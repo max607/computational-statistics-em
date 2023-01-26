@@ -10,29 +10,15 @@ output:
       in_header: preamble.tex
     extra_dependencies: ["bm"]
 title: |
-  | Report
-  | Statistical Analysis \vspace{1cm}
-  | ![](figures/sigillum-lmu.png){width=3cm}       \vspace{1cm}
+  | Project 2
+  | Computational Statistics \vspace{1cm}
+  | ![](figures/sigillum-lmu.png){width=3cm} \vspace{1cm}
 subtitle: |
-  | Submitted
+  | The code for this project is available under https://github.com/max607/computational-statistics-em.
 author: |
   | By
   | Maximilian Schneider
 date: "`r format(Sys.time(), '%d.%m.%Y')`"
-abstract: |
-  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-  Curabitur et libero eros.
-  Mauris varius mattis placerat.
-  Mauris a dignissim justo, et convallis enim.
-  Nulla facilisi.
-  Suspendisse ultricies orci eget lacus volutpat bibendum.
-  Nullam lorem nisi, fringilla quis justo at, fermentum lobortis tortor.
-  Mauris tincidunt leo in mi consectetur volutpat.
-  Aliquam semper luctus vestibulum.
-  Interdum et malesuada fames ac ante ipsum primis in faucibus.
-  Aliquam convallis dui in bibendum scelerisque.
-
-  The code for this project is available under https://github.com/max607/computational-statistics-em.
 ---
 
 <style>
@@ -44,8 +30,6 @@ text-align: justify}
   margin-right: auto;
 }
 </style>
-
-# Introduction
 
 ```{r setup, include=FALSE}
 # rmarkdown settings
@@ -61,11 +45,56 @@ library(ggplot2); theme_set(theme_bw())
 source("R/code.R")
 ```
 
-# Body
+# Maximum Likelihood estimation of $\theta$
 
-# Conclusion
+The pdf is
 
-# (APPENDIX) Appendix {-}
+\begin{equation}
+  f(y_i; \theta) = \frac{\theta^2}{\theta + 1} (1 + y_i) \exp(-\theta y_i), i = 1 \dots n.
+\end{equation}
 
-# Appendix
+The log likelihood is
+
+\begin{equation}
+  \ell(\theta) \propto 2n \log(\theta) - n \log(\theta + 1) - \theta \sum_{i = 1}^n y_i.
+\end{equation}
+
+Setting the derivative to zero leads to equation \@ref(eq:equation1) which has to be solved for $\theta$.
+
+\begin{equation}
+  \frac{\theta + 2}{\theta (\theta + 1)} = \bar{y},
+  (\#eq:equation1)
+\end{equation}
+
+where $\bar{y}$ is the sample mean of $\bm{y}$.
+
+# Estimation of standard error
+
+The pdf can be restated as
+
+\begin{equation}
+  f(y_i; \theta) = \frac{\theta}{\theta + 1} \theta \exp(-\theta y_i) + \frac{1}{\theta + 1} \theta^2 y_i \exp(-\theta y_i),
+\end{equation}
+
+i.e., a mixture of two gamma distributions in shape and rate parameterization.
+$\theta$ is the rate and the shapes are equal to 1 and 2.
+
+It is straight forward to simulate from this, but starting from $U \overset{iid}{\sim} U(0, 1)$ exponentially distributed variables can be obtained via inversion
+
+\begin{equation}
+  f^{-1}(u; \theta) = - \frac{\log(u)}{\theta},
+\end{equation}
+
+which is the same as a gamma with shape one and a gamma with shape 2 is obtained via the sum of 2 exponentials.
+For optimizing computation time $n$ observations are generated in the following way:
+
+1) Draw the number of shape 2 gammas (n2) by counting the number of $u < \frac{1}{\theta + 1}$
+1) Sample $n$ and $n2$ uniforms
+1) Transform the uniforms to exponentials using $f^{-1}$
+1) Add to the fist $n2$ of the $n$ exponentials the other exponentials
+1) Return
+
+The result is a sample with $n2$ observations of a gamma distribution with shape 2 and $n - n2$ observation of a gamma distribution with shape 1.
+
+For the purpose of estimating $\theta$ with the estimator of section \@ref(maximum-likelihood-estimation-of-theta) it is of no importance that the sample is sorted by shape.
 
