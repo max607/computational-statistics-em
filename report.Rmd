@@ -2,6 +2,10 @@
 documentclass: report
 link-citations: true
 urlcolor: blue
+fontsize: 12pt
+linestretch: 1.15
+papersize: a4
+geometry: margin=25mm,top=10mm
 output:
   bookdown::pdf_document2:
     toc: true
@@ -55,18 +59,31 @@ The pdf is
 
 The log likelihood is
 
-\begin{equation}
-  \ell(\theta) \propto 2n \log(\theta) - n \log(\theta + 1) - \theta \sum_{i = 1}^n y_i.
-\end{equation}
+\begin{align}
+  \ell(\theta) &= 2n \log(\theta) - n \log(\theta + 1) - \theta \sum_{i = 1}^n y_i + c \\
+               &\propto 2 \log(\theta) - \log(\theta + 1) - \theta \bar{y} + c.
+\end{align}
 
-Setting the derivative to zero leads to equation \@ref(eq:equation1) which has to be solved for $\theta$.
+The first derivative is
 
 \begin{equation}
-  \frac{\theta + 2}{\theta (\theta + 1)} = \bar{y},
-  (\#eq:equation1)
+  \ell'(\theta) = \frac{2}{\theta} - \frac{1}{\theta + 1} - \bar{y},
 \end{equation}
 
 where $\bar{y}$ is the sample mean of $\bm{y}$.
+Note, we can drop the n. \
+Setting the derivative to zero leads to equation \@ref(eq:equation1) which has to be solved for $\theta$.
+
+\begin{equation}
+  \frac{\theta + 2}{\theta (\theta + 1)} = \bar{y}.
+  (\#eq:equation1)
+\end{equation}
+
+One approach is to use Newton-Raphson, which requires the second order derivative.
+
+\begin{equation}
+  \ell''(\theta) = -\frac{2}{\theta^2} + \frac{1}{(\theta + 1)^2},
+\end{equation}
 
 # Estimation of standard error
 
