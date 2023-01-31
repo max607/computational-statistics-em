@@ -5,21 +5,37 @@ y_bar <- mean(vec_sample)
 
 # Functions ----------------------------------------------------------------------------------------
 
-f_y <- function(y, theta, log = FALSE) {
-  theta^2 / (theta + 1) * (1 + y) * exp(-theta * y)
+## Simple form -------------------------------------------------------------------------------------
+
+density1 <- function(y, theta, log = FALSE) {
+  (theta * dgamma(y, shape = 1, rate = theta, log = log) +
+    dgamma(y, shape = 2, rate = theta, log = log)) / (theta + 1)
 }
 
-loglik <- function(theta, y_bar) {
+loglik1 <- function(theta, y_bar) {
   2 * log(theta) - log(theta + 1) - y_bar * theta
 }
 
-d_loglik <- function(theta, y_bar) {
+d_loglik1 <- function(theta, y_bar) {
   2 * theta^(-1) - (theta + 1)^(-1) - y_bar
 }
 
-dd_loglik <- function(theta) {
+dd_loglik1 <- function(theta) {
   - 2 * theta^(-2) + (theta + 1)^(-2)
 }
+
+## Complex form ------------------------------------------------------------------------------------
+
+density2 <- function(y, theta, lambda, p, log = FALSE) {
+  p * density1(y, theta, log = log) + (1 - p) * dgamma(y, shape = 1, rate = lambda, log = log)
+}
+
+# complete_loglik <- function(theta, lambda, x, y) {
+#   (lamda - theta) * sum(x * y) + (2 * log(theta) - log(theta + 1) - log(lambda)) * sum(x) -
+#     lambda * sum(y) + log(lambda) * length(y)
+# }
+
+lambda_hat <- function(x, y) (length(y) - sum(x)) / (sum(y) - sum(x * y))
 
 # Plots --------------------------------------------------------------------------------------------
 
@@ -48,11 +64,11 @@ dd_loglik <- function(theta) {
 ## ML estimator ------------------------------------------------------------------------------------
 
 p1 <- ggplot() +
-  geom_function(fun = loglik, args = list(y_bar = y_bar), n = 501) +
+  geom_function(fun = loglik1, args = list(y_bar = y_bar), n = 501) +
   xlim(0, 10)
 
 p2 <- ggplot() +
-  geom_function(fun = d_loglik, args = list(y_bar = y_bar), n = 501) +
+  geom_function(fun = d_loglik1, args = list(y_bar = y_bar), n = 501) +
   xlim(0.1, 10)
 
 # Estimation ---------------------------------------------------------------------------------------
@@ -60,7 +76,7 @@ p2 <- ggplot() +
 ## Straight optimization ---------------------------------------------------------------------------
 
 estimation_uniroot <- function(vec_data) {
-  uniroot(d_loglik, y_bar = mean(vec_data), interval = c(0, 10),
+  uniroot(d_loglik1, y_bar = mean(vec_data), interval = c(0, 10),
           tol = .Machine$double.eps^0.5)$root
 }
 
@@ -68,7 +84,7 @@ theta_hat1 <- estimation_uniroot(vec_sample)
 
 ## Newton-Raphson ----------------------------------------------------------------------------------
 
-newton_raphson <- function(theta0 = 1, dl = d_loglik, ddl = dd_loglik, ...) {
+newton_raphson <- function(theta0 = 1, dl = d_loglik1, ddl = dd_loglik1, ...) {
   while (abs(round(step <- dl(theta0, ...) / ddl(theta0), 8)) > 0) {
     theta0 <- theta0 - step
   }
@@ -82,7 +98,7 @@ theta_hat2 <- newton_raphson(y_bar = y_bar)
 p3 <- p1 +
   geom_vline(xintercept = theta_hat1) +
   geom_vline(xintercept = theta_hat2, color = "red") +
-  geom_hline(yintercept = loglik(theta_hat2, y_bar))
+  geom_hline(yintercept = loglik1(theta_hat2, y_bar))
 
 # microbenchmark::microbenchmark(estimation_uniroot(vec_sample),
 #                                newton_raphson(y_bar = y_bar),
@@ -122,4 +138,35 @@ boot <- replicate(1e4, {
 boot.mean <- mean(boot)
 boot.se <- sqrt(mean((boot - boot.mean)^2))
 boot.bias <- boot.mean - theta_hat2
+
+## EM ----------------------------------------------------------------------------------------------
+
+em <- function(y, theta0, lambda0, p0) {
+  ll <- 0; i = 1
+  ll1 <- 0; ll2 <- 1
+  while(round(abs(ll2 - ll1), 6) > 0) {
+
+    # convergence based on observed likelihood 1
+    ll1 <- sum(density2(y, theta0, lambda0, p0, log = TRUE))
+
+    # expectation
+    x <- p0 * density1(y, theta0) / density2(y, theta0, lambda0, p0)
+
+    # maximization
+    lambda0 <- lambda_hat(x, y)
+    theta0 <- newton_raphson(y_bar = sum(x * y) / sum(x))  # TODO: average of y, where x == 1
+    p0 <- mean(x)
+
+    # convergence based on observed likelihood 2
+    ll2 <- sum(density2(y, theta0, lambda0, p0, log = TRUE))
+
+    # monitoring
+    ll[[i]] <- ll2
+    i <- i + 1
+  }
+  list(p_hat = p0, theta_hat = theta0, lambda_hat = lambda0, ll = ll)
+}
+
+# res <- em(vec_sample, theta0 = 1, lambda0 = 1, p0 = 0.5)
+# plot(res$ll, type = "l")
 
