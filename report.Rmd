@@ -36,6 +36,8 @@ text-align: justify}
 </style>
 
 ```{r setup, include=FALSE}
+set.seed(1)
+
 # rmarkdown settings
 knitr::opts_chunk$set(fig.align = "center", out.width = '80%', echo = FALSE, message = FALSE,
                       warning = FALSE)
@@ -45,129 +47,186 @@ library(magrittr)
 library(data.table)
 library(ggplot2); theme_set(theme_bw())
 
+# data
+vec_sample <- read.table("data.txt") %>% unlist() %>% unname()
+
 # code
 source("R/code.R")
+source("R/plots.R")
 ```
 
 # Maximum Likelihood estimation of $\theta$
 
-The pdf is
+## Notation
+
+In the following random variables (RV) are denoted with capital letters, e.g. $Y$, their realizations with lowercase letters, e.g., $y_i$, where always $i = 1, ..., n$.
+Loglikelihoods are written, e.g., as $\ell(\theta)$.
+For parameters, Greek letters are used and their estimators are distinguished with a hat, e.g., $\hat{\theta}$.
+In the context of this project, derivatives are only taken when functions are viewed as functions of one variable, denoted, e.g., as $\ell'(\theta)$.
+
+## Likelihood
+
+Given are `r length(vec_sample)` one dimensional data.
+Figure \@ref(fig:plot-y) shows a histogram of them.
+They exhibit a positive skew.
+
+```{r plot-y, fig.cap='(ref:plot-y)'}
+p1
+```
+(ref:plot-y) Histogram of provided data. The black line indicates the sample mean.
+
+It is assumed they are independently identically distributed (i.i.d.) realizations $y_i$ of a RV $Y$ with probability density function (PDF)
 
 \begin{equation}
-  f(y_i; \theta) = \frac{\theta^2}{\theta + 1} (1 + y_i) \exp(-\theta y_i), i = 1 \dots n.
+  f_\theta(y_i) = \frac{\theta^2}{\theta + 1} (1 + y_i) \exp(-\theta y_i),\quad y_i, \theta > 0.
 \end{equation}
 
-The log likelihood is
+The goal is to estimate $\theta$ via maximum likelihood (ML).
+Its loglikelihood
 
 \begin{align}
-  \ell(\theta) &= 2n \log(\theta) - n \log(\theta + 1) - \theta \sum_{i = 1}^n y_i + c \\
-               &\propto 2 \log(\theta) - \log(\theta + 1) - \theta \bar{y} + c.
+  \ell(\theta) &= \log \left( \prod_{i = 1}^n f_\theta(y_i) \right) \notag \\
+    &= 2n \log(\theta) - n \log(\theta + 1) - \theta \sum_{i = 1}^n y_i + c \notag \\
+    &\propto 2 \log(\theta) - \log(\theta + 1) - \theta \bar{y} + c,
 \end{align}
 
-The first derivative is
+where $c$ is a constant, which does not depend on $\theta$, and thus is irrelevant for the following calculations.
+The last term (1.2) results by dividing the loglikelihood by the number of observations $n$, so $\bar{y}$ denotes the sample mean. \
+The first derivative of (1.2)
 
 \begin{equation}
-  \ell'(\theta) = \frac{2}{\theta} - \frac{1}{\theta + 1} - \bar{y},
+  \ell'(\theta) = \frac{2}{\theta} - \frac{1}{\theta + 1} - \bar{y}.
 \end{equation}
 
-where $\bar{y}$ is the sample mean of $\bm{y}$.
-Note, we can drop the n. \
-Setting the derivative to zero leads to equation \@ref(eq:equation1) which has to be solved for $\theta$.
+There is no analytical solution available for equating (1.3) to zero and solving for $\theta$.
+
+## Newton-Raphson
+
+The maximum of $\ell(\theta)$ has to be found numerically, here via Newton-Raphson, i.e., iteratively applying
 
 \begin{equation}
-  \frac{\theta + 2}{\theta (\theta + 1)} = \bar{y}.
-  (\#eq:equation1)
+  \theta^* = \theta - \frac{\ell'(\theta)}{\ell''(\theta)},
 \end{equation}
 
-One approach is to use Newton-Raphson, which requires the second order derivative.
+where $\ell''(\theta) = -\frac{2}{\theta^2} + \frac{1}{(\theta + 1)^2}$, $\theta$ is the value at iteration $t$ and $\theta^*$ is the updated value at iteration $t + 1$, until the update gets very close to zero.
+The final value is taken as the ML estimate.
+
+For the given data $\hat{\theta} =$ `r theta_hat2`.
+
+# Bootstrapping for standard error of $\hat{\theta}$
+
+## Sampling from $f_{\hat{\theta}}(y_i)$
+
+The goal is to quantify the uncertainty of $\hat{\theta}$.
+For this parametric bootstrap is applied, for which sampling from $f_{\hat{\theta}}(y_i)$ is necessary.
+The starting point is restating (1.1) as
 
 \begin{equation}
-  \ell''(\theta) = -\frac{2}{\theta^2} + \frac{1}{(\theta + 1)^2},
+  f_\theta(y_i) = \frac{\theta}{\theta + 1} \theta \exp(-\theta y_i) + \frac{1}{\theta + 1} \theta^2 y_i \exp(-\theta y_i)
 \end{equation}
 
-# Estimation of standard error
+and recognizing this as a mixture of two gamma distributions in shape and rate parameterization, where $\theta$ is the rate and the shapes are equal to one and two, respectively.
 
-The pdf can be restated as
-
-\begin{equation}
-  f(y_i; \theta) = \frac{\theta}{\theta + 1} \theta \exp(-\theta y_i) + \frac{1}{\theta + 1} \theta^2 y_i \exp(-\theta y_i),
-\end{equation}
-
-i.e., a mixture of two gamma distributions in shape and rate parameterization.
-$\theta$ is the rate and the shapes are equal to 1 and 2.
-
-It is straight forward to simulate from this, but starting from $U \overset{iid}{\sim} U(0, 1)$ exponentially distributed variables can be obtained via inversion
+Starting from first principals, it is assumed only RVs $U \overset{iid}{\sim} U(0, 1)$ are available.
+This is not to much of a hassle, as Gamma RVs with shape $j$ are the sum of $j$ Exponential RVs, which in turn can be easily obtained via inversion
 
 \begin{equation}
   f^{-1}(u; \theta) = - \frac{\log(u)}{\theta},
 \end{equation}
 
-which is the same as a gamma with shape one and a gamma with shape 2 is obtained via the sum of 2 exponentials.
-For optimizing computation time $n$ observations are generated in the following way:
+where $\theta$ already is the desired rate.
 
-1) Draw the number of shape 2 gammas (n2) by counting the number of $u < \frac{1}{\theta + 1}$
-1) Sample $n$ and $n2$ uniforms
-1) Transform the uniforms to exponentials using $f^{-1}$
-1) Add to the fist $n2$ of the $n$ exponentials the other exponentials
-1) Return
+This is implemented in the following steps:
 
-The result is a sample with $n2$ observations of a gamma distribution with shape 2 and $n - n2$ observation of a gamma distribution with shape 1.
+1) Draw $n$ $u_i$.
+1) Calculate $n$ temporary $y_i = f^{-1}(u_i; \hat{\theta})$ with shape one.
+1) Draw the number of shape two gammas $n_2$.
+   1) Draw another $n$ $u_j$.
+   1) $n_2 = \#\{u_j | u_j < \frac{1}{\hat{\theta} + 1}\}$.
+1) Draw $n_2$ $u_k$.
+1) Calculate $n_2$ temporary $y_k = f^{-1}(u_k; \hat{\theta})$ with shape one.
+1) Add $y_k$s component-wise to the fist $n_2$ $y_i$.
+1) Return $y_i$s.
 
-For the purpose of estimating $\theta$ with the estimator of section \@ref(maximum-likelihood-estimation-of-theta) it is of no importance that the sample is sorted by shape.
+Returned is a sample of size $n$, which can be seen as a realization of $Y_i$ with PDF $f_\theta(y_i)$.
+$n_2$ observations are realizations of Gamma RVs with shape two and $n - n2$ observation of are realizations of Gamma RVs with shape one.
+
+For the purpose of estimating $\theta$ with the estimator of section \@ref(newton-raphson) it is of no importance that the sample is sorted by shape.
+
+## Bootstrap standard error
+
+Given $B$ samples of size $n$ from the sampler of the previous section, and corresponding bootstrap estimates $\hat{\theta}_b^*,\ b = 1, ..., B$, the bootstrap standard error
+
+\begin{equation}
+  \hat{\text{se}}_B(\hat{\theta}) = \sqrt{\frac{1}{B} \sum_{b = 1}^B (\hat{\theta}_b^* - \hat{\theta}^*)^2},
+\end{equation}
+
+according to the lecture slides, where $\hat{\theta}^*$ is the sample mean of all $\hat{\theta}_b^*$.
+
+For this simulation $B = 10^4$ and the resulting $\hat{\text{se}}_B(\hat{\theta}) =$ `r boot.se`.
 
 # EM
 
-Consider the more complex pdf
+## Augmented data
+
+Consider a more complex PDF for the given data
+
+\begin{equation}
+  f_\pi(y_i) = \pi f_\theta(y_i) + (1 - \pi) f_\lambda(y_i),\quad y_i > 0, \pi \in [0, 1],
+\end{equation}
+
+where $f_\theta(y_i)$ is the PDF from before and $f_\lambda(y_i) = \lambda \exp(-\lambda y_i)$, i.e., $f_\pi(y_i)$ is a mixture of two PDFs. \
+The goal is to estimate $\theta, \lambda$ and $\pi$ using an EM algorithm.
+
+Start by introducing augmented data $x_i$ and assume they are realizations from $X_i \sim Ber(\pi)$.
+An equivalent formulation of (3.1) thus is
+
+\begin{equation}
+  f(\theta, \lambda | x_i, y_i) = f_\theta(y_i)^{x_i} f_\lambda(y_i)^{1 - x_i},
+\end{equation}
+
+where the likelihood of $\theta$ and $\lambda$ is computed given $x_i, y_i$.
+I.e., simulation from $f_\pi(y_i)$ given $\theta, \lambda$ and $\pi$ is possible, by first drawing $x_i$ and then drawing from $f_\theta(y_i)$ if $x_i = 1$ or $f_\lambda(y_i)$ if $x_i = 0$.
+(3.2) is called complete likelihood, while (3.1) is called observed likelihood.
+
+## Expectation
+
+For the first part of the EM algorithm an expression for $\mathbb{E}(X_i | \pi, \theta, \lambda, y_i)$ is needed.
+This is obtained by applying Bayes' theorem
 
 \begin{align}
-  f(y_i; \theta, \lambda, \pi) = \pi \frac{\theta^2}{\theta + 1} (1 + y_i) \exp(-\theta y_i) + (1 - \pi) \lambda \exp(\lambda -y_i), \\
-  y_i, \theta, \lambda \in \mathbb{R}^+, \pi \in [0, 1].
+  f(x_i | \theta, \lambda, \pi, y_i)
+  &= \dfrac{f(\theta, \lambda | x_i, y_i) f(x_i | \pi)}{f(\theta, \lambda | y_i)} \notag \\
+  &= \dfrac{f_\theta(y_i)^{x_i} f_\lambda(y_i)^{1 - x_i}\ \pi^{x_i} (1 - \pi)^{1 - x_i}}{(1 - \pi) f_\lambda(y_i) + \pi f_\theta(y_i)}.
 \end{align}
 
-The goal is to estimate $\theta, \lambda$ and $\pi$ applying EM.
-Because (3.1) is a mixture of two PDFs, one can rewrite the observed PDF introducing missing data
+The second line is implied by the distribution of $X_i$ and by the fact that $f(\theta, \lambda | y_i) = f(x_i = 0 | \pi) f(\theta, \lambda | x_i = 0, y_i) + f(x_i = 1 | \pi) f(\theta, \lambda | x_i = 1, y_i)$. \
+One can immediately see
 
 \begin{equation}
-  \mathcal{L}_i(\theta, \lambda | x_i, y_i) = f_\theta(y_i)^{x_i} f_\lambda(y_i)^{1 - x_i},
+  \mathbb{E}(X_i | \pi, \theta, \lambda, y_i) = \dfrac{f_\theta(y_i) \pi }{(1 - \pi) f_\lambda(y_i) + \pi f_\theta(y_i)}.
 \end{equation}
 
-where $X_i \sim Ber(\pi)$.
-We continue by applying the Bayes theorem
+## Maximization
 
-\begin{equation}
-  f(x_i | \theta, \lambda, y_i) =
-  \dfrac{\mathcal{L}_i(\theta, \lambda | x_i, y_i) f(x_i)}{f(\theta, \lambda)}.
-\end{equation}
-
-Note that $f(\theta, \lambda) = f(x_i = 0) \mathcal{L}_i(\theta, \lambda | x_i = 0, y_i) + f(x_i = 1) \mathcal{L}_i(\theta, \lambda | x_i = 1, y_i)$.
-Via substituting we arrive at
-
-\begin{equation}
-  f(x_i | \theta, \lambda, y_i) =
-  \dfrac{f_\theta(y_i)^{x_i} f_\lambda(y_i)^{1 - x_i} \pi^{x_i} (1 - \pi)^{1 - x_i}}{(1 - \pi) f_\lambda(y_i) + \pi f_\theta(y_i)}.
-\end{equation}
-
-From this we can read
-
-\begin{equation}
-  \mathbb{E}(X_i | \theta, \lambda, y_i) = \dfrac{f_\theta(y_i) \pi }{(1 - \pi) f_\lambda(y_i) + \pi f_\theta(y_i)}.
-\end{equation}
-
-Now we have everything we need: a approachable likelihood for the maximization step and the expectation of the missing data given the parameter estimates.
-All parameters are independent, so the relevant parts of the likelihoods are
+The second step is simple maximum likelihood estimation given the augmented data.
+The loglikelihoods of the respective parameters are
 
 \begin{align}
-  \ell(\pi | \bm{x}) &= \log(\pi) \sum_{i = 1}^n x_i + \log(1 - \pi) \sum_{i = 1}^n (1 - x_i) \\
-  \ell(\lambda | \bm{x}, \bm{y}) &= \log(\lambda) \sum_{i = 1}^n (1 - x_i) - \lambda \sum_{i = 1}^n (1 - x_i) y_i + c \\
-  \ell(\theta | \bm{x}, \bm{y}) &= 2 \log(\theta) \sum_{i = 1}^n x_i - \log(\theta + 1) \sum_{i = 1}^n x_i - \theta \sum_{i = 1}^n x_i y_i + c \\
-  &\propto 2 \log(\theta) - \log(\theta + 1)  - \theta \tilde{y} + c
+  \ell(\pi)     &= \log(\pi) \sum_{i = 1}^n x_i + \log(1 - \pi) \sum_{i = 1}^n (1 - x_i), \\
+  \ell(\lambda) &= n \log(\lambda) - \lambda \sum_{i = 1}^n y_i - \log(\lambda) \sum_{i = 1}^n x_i + \lambda \sum_{i = 1}^n x_i y_i + c, \\
+  \ell(\theta)  &= 2 \log(\theta) \sum_{i = 1}^n x_i - \log(\theta + 1) \sum_{i = 1}^n x_i - \theta \sum_{i = 1}^n x_i y_i + c \notag \\
+                &\propto 2 \log(\theta) - \log(\theta + 1)  - \theta \tilde{y} + c,
 \end{align}
 
-the augmented data contains all the information about $\pi$.
-So, noting the distribution of $X_i$, we can maximize (3.7) to obtain the ML estimate $\hat{\pi} = \frac{1}{n} \sum_{i = 1}^n x_i$. \
-It is also possible to solve (3.8) analytically.
-The likelihood is maximized by $\hat{\lambda} = (n - \sum_{i = 1}^n x_i) / (\sum_{i = 1}^n y_i - \sum_{i = 1}^n x_i y_i)$. <!-- TODO: Probably wrong and the inverse is right -->
-$\tilde{y} = \sum_{i = 1}^n x_i y_i / \sum_{i = 1}^n x_i$
+where $\tilde{y} = \sum_{i = 1}^n x_i y_i / \sum_{i = 1}^n x_i$.
+
+The maximizer of (3.5) is $\hat{\pi} = \frac{1}{n} \sum_{i = 1}^n x_i$. \
+It is also possible to maximize (3.6) analytically, via $\hat{\lambda} = (n - \sum_{i = 1}^n x_i) / (\sum_{i = 1}^n y_i - \sum_{i = 1}^n x_i y_i)$.
+This can be interpreted as the inverse of the sample mean of the $y_i$, where $x_i = 0$. \
+(3.7) has no close form and is maximized using Newton-Raphson (see section \@ref(newton-raphson)), substituting $\bar{y}$ with $\tilde{y}$, which can be interpreted as the sample mean of the $y_i$, where $x_i = 1$.
+
+## Application
 
 Terminating condition
 
