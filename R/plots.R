@@ -1,9 +1,9 @@
 # Data ---------------------------------------------------------------------------------------------
 
-# p1 <- ggplot(data.table(y = vec_sample), aes(y)) +
-#   geom_histogram(color = "black", fill = "white", bins = 50) +
-#   geom_vline(xintercept = y_bar) +
-#   ylab("Count")
+p1 <- ggplot(data.table(y = vec_sample), aes(y)) +
+  geom_histogram(color = "black", fill = "white", bins = 50) +
+  geom_vline(xintercept = mean(vec_sample)) +
+  ylab("Count")
 
 # Animation of theta -------------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@
 # for (i in exp(seq(log(0.01), log(100), length = fps * seconds))) {
 #   print(
 #     p +
-#       geom_function(fun = f_y, args = list(theta = i), n = 501) +
+#       geom_function(fun = pdf_theta, args = list(theta = i), n = 501) +
 #       labs(title = paste("theta:", i))
 #   )
 # }
@@ -27,20 +27,29 @@
 # paste("ffmpeg -r", fps, "-i /tmp/gif-part%04d.png output.mp4") %>%
 #   system()
 
-# ML estimator -------------------------------------------------------------------------------------
+# EM -----------------------------------------------------------------------------------------------
 
-# p6 <- ggplot() +
-#   geom_function(fun = loglik1, args = list(y_bar = y_bar), n = 501) +
-#   xlim(0, 10)
+## x and y -----------------------------------------------------------------------------------------
 
-# p2 <- ggplot() +
-#   geom_function(fun = d_loglik1, args = list(y_bar = y_bar), n = 501) +
-#   xlim(0.1, 10)
+p2 <- ggplot(data.table(x = em.run$x, y = vec_sample), aes(x, y)) +
+  geom_point(alpha = 0.5)
 
-# Plot ---------------------------------------------------------------------------------------------
+## Convergence -------------------------------------------------------------------------------------
 
-# p3 <- p1 +
-#   geom_vline(xintercept = theta_hat1) +
-#   geom_vline(xintercept = theta_hat2, color = "red") +
-#   geom_hline(yintercept = loglik1(theta_hat2, y_bar))
+dt_monitoring <- em.run$monitoring
+
+p3 <- melt(dt_monitoring, id.vars = c("id", "xi")) %>%
+  ggplot(aes(id, value)) +
+  geom_line() +
+  facet_wrap("variable", scales = "free_y") +
+  xlab("Iteration") + ylab("Value")
+
+p4 <- dt_monitoring[, do.call(cbind, xi)] %>%
+  as.data.table() %>%
+  .[, id := seq_len(.N)] %>%
+  melt(id.vars = "id") %>%
+  .[, variable := as.numeric(factor(variable))] %>%
+  ggplot(aes(variable, value, group = id)) +
+  geom_line(alpha = 0.5) +
+  xlab("Iteration") + ylab("x")
 

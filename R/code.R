@@ -78,9 +78,16 @@ se_theta <- function(y, B = 1e4, theta_hat) {
 # EM -----------------------------------------------------------------------------------------------
 
 em <- function(y, p0 = 0.5, theta0 = 1, lambda0 = 1) {
-  ll <- 0; i = 1  # monitoring
-  ll1 <- 0; ll2 <- 1  # convergence
-  while(round(abs(ll2 - ll1), 6) > 0) {
+
+  # monitoring
+  i = 1
+  dt_params <- data.table(id = seq_len(8000), p = 0, theta = 0, lambda = 0, loglik = 0,
+                          xi = vector("list", 8000))
+
+  # convergence
+  ll1 <- 0; ll2 <- 1
+
+  while(round(abs((ll2 - ll1) / ll2), 6) > 0) {
 
     # convergence based on observed likelihood 1
     ll1 <- sum(pdf_p(y, p0, theta0, lambda0, log = TRUE))
@@ -97,10 +104,11 @@ em <- function(y, p0 = 0.5, theta0 = 1, lambda0 = 1) {
     ll2 <- sum(pdf_p(y, p0, theta0, lambda0, log = TRUE))
 
     # monitoring
-    ll[[i]] <- ll2
+    dt_params[i, c("p", "theta", "lambda", "loglik", "xi") := .(p0, theta0, lambda0, ll2, list(x))]
     i <- i + 1
   }
-  list(p_hat = p0, theta_hat = theta0, lambda_hat = lambda0, x = x, ll = ll)
+  dt_params <- dt_params[!sapply(xi, is.null),]
+  list(p_hat = p0, theta_hat = theta0, lambda_hat = lambda0, x = x, monitoring = dt_params)
 }
 
 # Application --------------------------------------------------------------------------------------
