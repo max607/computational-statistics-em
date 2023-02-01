@@ -59,14 +59,14 @@ source("R/plots.R")
 
 ## Notation
 
-In the following random variables (RV) are denoted with capital letters, e.g. $Y$, their realizations with lowercase letters, e.g., $y_i$, where always $i = 1, ..., n$.
-Loglikelihoods are written, e.g., as $\ell(\theta)$.
+In the following, random variables (RV) are denoted with capital letters, e.g. $Y$, their realizations with lowercase letters, e.g., $y_i$, where always $i = 1, ..., n$.
+Log-likelihoods are written, e.g., as $\ell(\theta)$.
 For parameters, Greek letters are used and their estimators are distinguished with a hat, e.g., $\hat{\theta}$.
 In the context of this project, derivatives are only taken when functions are viewed as functions of one variable, denoted, e.g., as $\ell'(\theta)$.
 
 ## Likelihood
 
-Given are `r length(vec_sample)` one dimensional data.
+`r length(vec_sample)` one dimensional data are given.
 Figure \@ref(fig:plot-y) shows a histogram of them.
 They exhibit a positive skew.
 
@@ -82,7 +82,7 @@ It is assumed they are independently identically distributed (i.i.d.) realizatio
 \end{equation}
 
 The goal is to estimate $\theta$ via maximum likelihood (ML).
-Its loglikelihood
+Its log-likelihood
 
 \begin{align}
   \ell(\theta) &= \log \left( \prod_{i = 1}^n f_\theta(y_i) \right) \notag \\
@@ -90,8 +90,8 @@ Its loglikelihood
     &\propto 2 \log(\theta) - \log(\theta + 1) - \theta \bar{y} + c,
 \end{align}
 
-where $c$ is a constant, which does not depend on $\theta$, and thus is irrelevant for the following calculations.
-The last term (1.2) results by dividing the loglikelihood by the number of observations $n$, so $\bar{y}$ denotes the sample mean. \
+where $c$ is a constant, which does not depend on $\theta$, and thus is irrelevant for subsequent calculations.
+The last term (1.2) results by dividing the log-likelihood by the number of observations $n$, so $\bar{y}$ denotes the sample mean. \
 The first derivative of (1.2)
 
 \begin{equation}
@@ -118,17 +118,17 @@ For the given data $\hat{\theta} =$ `r theta_hat`.
 ## Sampling from $f_{\hat{\theta}}(y_i)$
 
 The goal is to quantify the uncertainty of $\hat{\theta}$.
-For this parametric bootstrap is applied, for which sampling from $f_{\hat{\theta}}(y_i)$ is necessary.
+For this, parametric bootstrap is applied, for which sampling from $f_{\hat{\theta}}(y_i)$ is necessary.
 The starting point is restating (1.1) as
 
 \begin{equation}
   f_\theta(y_i) = \frac{\theta}{\theta + 1} \theta \exp(-\theta y_i) + \frac{1}{\theta + 1} \theta^2 y_i \exp(-\theta y_i)
 \end{equation}
 
-and recognizing this as a mixture of two gamma distributions in shape and rate parameterization, where $\theta$ is the rate and the shapes are equal to one and two, respectively.
+and recognizing this as a mixture of two Gamma distributions in shape and rate parameterization, where $\theta$ is the rate and the shapes are equal to one and two, respectively.
 
 Starting from first principals, it is assumed only RVs $U \overset{iid}{\sim} U(0, 1)$ are available.
-This is not to much of a hassle, as Gamma RVs with shape $j$ are the sum of $j$ Exponential RVs, which in turn can be easily obtained via inversion
+This is not too much of a hassle, as Gamma RVs with shape $j$ are the sum of $j$ Exponential RVs, which in turn can be easily obtained via inversion
 
 \begin{equation}
   f^{-1}(u; \theta) = - \frac{\log(u)}{\theta},
@@ -136,32 +136,32 @@ This is not to much of a hassle, as Gamma RVs with shape $j$ are the sum of $j$ 
 
 where $\theta$ already is the desired rate.
 
-This is implemented in the following steps:
+Sampling from $f_{\hat{\theta}}(y_i)$ is implemented in the following steps:
 
-1) Draw $n$ $u_i$.
-1) Calculate $n$ temporary $y_i = f^{-1}(u_i; \hat{\theta})$ with shape one.
-1) Draw the number of shape two gammas $n_2$.
-   1) Draw another $n$ $u_j$.
+1) Draw $u_i$ $n$-times.
+1) Calculate temporary $y_i = f^{-1}(u_i; \hat{\theta})$.
+1) Draw the number of shape two Gamma RVs $n_2$.
+   1) Draw $u_j$ $n$-times.
    1) $n_2 = \#\{u_j | u_j < \frac{1}{\hat{\theta} + 1}\}$.
-1) Draw $n_2$ $u_k$.
-1) Calculate $n_2$ temporary $y_k = f^{-1}(u_k; \hat{\theta})$ with shape one.
-1) Add $y_k$s component-wise to the fist $n_2$ $y_i$.
+1) Draw $u_k$ $n_2$-times.
+1) Calculate temporary $y_k = f^{-1}(u_k; \hat{\theta})$.
+1) Add $y_k$s component-wise to the fist $n_2$ $y_i$s.
 1) Return $y_i$s.
 
-Returned is a sample of size $n$, which can be seen as a realization of $Y_i$ with PDF $f_\theta(y_i)$.
-$n_2$ observations are realizations of Gamma RVs with shape two and $n - n2$ observation of are realizations of Gamma RVs with shape one.
+Returned is a sample of size $n$, which can be seen as realizations of $Y$.
+$n_2$ observations are realizations of a Gamma RV with shape two and $n - n2$ observations are realizations of a Gamma RV with shape one.
 
 For the purpose of estimating $\theta$ with the estimator of Section \@ref(newton-raphson) it is of no importance that the sample is sorted by shape.
 
 ## Bootstrap standard error
 
-Given $B$ samples of size $n$ from the sampler of the previous section, and corresponding bootstrap estimates $\hat{\theta}_b^*,\ b = 1, ..., B$, the bootstrap standard error
+Given $B$ samples of size $n$ produced by the sampler of the previous section, and corresponding bootstrap estimates $\hat{\theta}_b^*,\ b = 1, ..., B$, the bootstrap standard error
 
 \begin{equation}
   \hat{\text{se}}_B(\hat{\theta}) = \sqrt{\frac{1}{B} \sum_{b = 1}^B (\hat{\theta}_b^* - \hat{\theta}^*)^2},
 \end{equation}
 
-according to the lecture slides, where $\hat{\theta}^*$ is the sample mean of all $\hat{\theta}_b^*$.
+according to the lecture slides, where $\hat{\theta}^*$ is the mean of all $\hat{\theta}_b^*$.
 
 For this simulation $B = 10^4$ and the resulting $\hat{\text{se}}_B(\hat{\theta}) =$ `r theta_hat.se`.
 
@@ -175,24 +175,24 @@ Consider a more complex PDF for the given data
   f_\pi(y_i) = \pi f_\theta(y_i) + (1 - \pi) f_\lambda(y_i),\quad y_i > 0, \pi \in [0, 1],
 \end{equation}
 
-where $f_\theta(y_i)$ is the PDF from before and $f_\lambda(y_i) = \lambda \exp(-\lambda y_i)$, i.e., $f_\pi(y_i)$ is a mixture of two PDFs. \
+where $f_\theta(y_i)$ is the previous PDF and $f_\lambda(y_i) = \lambda \exp(-\lambda y_i),\ \lambda > 0$, i.e., $f_\pi(y_i)$ is a mixture of two PDFs. \
 The goal is to estimate $\theta, \lambda$ and $\pi$ using an EM algorithm.
 
-Start by introducing augmented data $x_i$ and assume they are realizations from $X_i \sim Ber(\pi)$.
+Start by introducing augmented data $x_i$ and assume they are i.i.d. realizations from $X \sim Ber(\pi)$.
 An equivalent formulation of (3.1) thus is
 
 \begin{equation}
   f(\theta, \lambda | x_i, y_i) = f_\theta(y_i)^{x_i} f_\lambda(y_i)^{1 - x_i},
 \end{equation}
 
-where the likelihood of $\theta$ and $\lambda$ is computed given $x_i, y_i$.
-I.e., simulation from $f_\pi(y_i)$ given $\theta, \lambda$ and $\pi$ is possible, by first drawing $x_i$ and then drawing from $f_\theta(y_i)$ if $x_i = 1$ or $f_\lambda(y_i)$ if $x_i = 0$.
+where the likelihood of $\theta$ and $\lambda$ is computed given $x_i, y_i$. \
+I.e., simulation from $f_\pi(y_i)$ given $\theta, \lambda$ and $\pi$ is possible, by first drawing $x_i$ and then drawing from $f_\theta(y_i)$ if $x_i = 1$ or from $f_\lambda(y_i)$ if $x_i = 0$. \
 (3.2) is called complete likelihood, while (3.1) is called observed likelihood.
 
 ## Expectation
 
-For the first part of the EM algorithm an expression for $\mathbb{E}(X_i | \pi, \theta, \lambda, y_i)$ is needed.
-This is obtained by applying Bayes' theorem
+For the first part of the EM algorithm, $\mathbb{E}(X | \pi, \theta, \lambda, y_i)$ needs to be calculated.
+An analytical solution can be obtained by applying Bayes' theorem
 
 \begin{align}
   f(x_i | \theta, \lambda, \pi, y_i)
@@ -200,17 +200,17 @@ This is obtained by applying Bayes' theorem
   &= \dfrac{f_\theta(y_i)^{x_i} f_\lambda(y_i)^{1 - x_i}\ \pi^{x_i} (1 - \pi)^{1 - x_i}}{(1 - \pi) f_\lambda(y_i) + \pi f_\theta(y_i)}.
 \end{align}
 
-The second line is implied by the distribution of $X_i$ and by the fact that $f(\theta, \lambda | y_i) = f(x_i = 0 | \pi) f(\theta, \lambda | x_i = 0, y_i) + f(x_i = 1 | \pi) f(\theta, \lambda | x_i = 1, y_i)$. \
+The second line is implied by the distribution of $X$ and the fact that $f(\theta, \lambda | y_i) = f(x_i = 0 | \pi) f(\theta, \lambda | x_i = 0, y_i) + f(x_i = 1 | \pi) f(\theta, \lambda | x_i = 1, y_i)$. \
 One can immediately see
 
 \begin{equation}
-  \mathbb{E}(X_i | \pi, \theta, \lambda, y_i) = \dfrac{f_\theta(y_i) \pi }{(1 - \pi) f_\lambda(y_i) + \pi f_\theta(y_i)}.
+  \mathbb{E}(X | \pi, \theta, \lambda, y_i) = \dfrac{f_\theta(y_i) \pi }{(1 - \pi) f_\lambda(y_i) + \pi f_\theta(y_i)}.
 \end{equation}
 
 ## Maximization
 
 The second step is simple maximum likelihood estimation given the augmented data.
-The loglikelihoods of the respective parameters are
+The log-likelihoods of the respective parameters are
 
 \begin{align}
   \ell(\pi)     &= \log(\pi) \sum_{i = 1}^n x_i + \log(1 - \pi) \sum_{i = 1}^n (1 - x_i), \\
@@ -222,20 +222,19 @@ The loglikelihoods of the respective parameters are
 where $\tilde{y} = \sum_{i = 1}^n x_i y_i / \sum_{i = 1}^n x_i$.
 
 The maximizer of (3.5) is $\hat{\pi} = \frac{1}{n} \sum_{i = 1}^n x_i$. \
-It is also possible to maximize (3.6) analytically, via $\hat{\lambda} = (n - \sum_{i = 1}^n x_i) / (\sum_{i = 1}^n y_i - \sum_{i = 1}^n x_i y_i)$.
-This can be interpreted as the inverse of the sample mean of the $y_i$, where $x_i = 0$. \
-(3.7) has no close form and is maximized using Newton-Raphson (see Section \@ref(newton-raphson)), substituting $\bar{y}$ with $\tilde{y}$, which can be interpreted as the sample mean of the $y_i$, where $x_i = 1$.
+It is also possible to maximize (3.6) analytically, via $\hat{\lambda} = (n - \sum_{i = 1}^n x_i) / (\sum_{i = 1}^n y_i - \sum_{i = 1}^n x_i y_i)$, which can be interpreted as the inverse of the sample mean of the $y_i$, where $x_i = 0$. \
+(3.7) has no closed form and is maximized using Newton-Raphson (see Section \@ref(newton-raphson)), substituting $\bar{y}$ with $\tilde{y}$, which can be interpreted as the sample mean of the $y_i$, where $x_i = 1$.
 
 ## Application
 
-* Starting from initial guesses, $\pi = 0.5, \theta = 1, \lambda = 1$, a first version of $x_i$s is generated using the result from Section \@ref(expectation).
+* Starting from initial guesses, $\pi_0 = 0.5, \theta_0 = 1, \lambda_0 = 1$, a first version of $x_i$s is generated using the result from Section \@ref(expectation).
 * Next, the parameters are updated using the results from Section \@ref(maximization).
-* Now iterate between the expectation and the maximization step while monitoring the observed likelihood of current parameter estimates.
-* Stop when there no longer is a relative increase in the observed likelihood and return $\hat{\pi}, \hat{\theta}, \hat{\lambda}$, the maximum likelihood estimates.
+* Now iterate between the expectation and the maximization step while monitoring the observed log-likelihood given the current parameter estimates.
+* Stop when there no longer is a relative increase in the observed log-likelihood and return $\hat{\pi}, \hat{\theta}, \hat{\lambda}$, the maximum likelihood estimates.
 
-For the given data $\hat{\pi} =$ `r em.run$p_hat`, $\hat{\theta} =$ `r em.run$theta_hat` and $\hat{\lambda} =$ `r em.run$lambda_hat`.
+In this case $\hat{\pi} =$ `r em.run$p_hat`, $\hat{\theta} =$ `r em.run$theta_hat` and $\hat{\lambda} =$ `r em.run$lambda_hat`.
 
-The augmented data can be seen as the probability of the observations pertaining to the cluster, where the PDF is $f_\theta(y_i)$.
+An augmented datum $x_i$ can be seen as the probability of observation $i$ pertaining to a cluster, with associated PDF $f_\theta(y_i)$.
 As can be seen in Figure \@ref(fig:plot-xy), the probability of datum $i$ to be from cluster $c_\theta$ increases linearly with $y$.
 
 ```{r plot-xy, fig.cap='(ref:plot-xy)'}
@@ -249,7 +248,7 @@ All seem to have converged.
 ```{r plot-convergence, fig.cap='(ref:plot-convergence)'}
 p3
 ```
-(ref:plot-convergence) Convergence of $\pi, \theta, \lambda$ and observed loglikelihood.
+(ref:plot-convergence) Convergence of $\pi, \theta, \lambda$ and observed log-likelihood.
 
 ```{r plot-convergence-x, fig.cap='(ref:plot-convergence-x)'}
 p4
