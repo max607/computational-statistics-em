@@ -125,30 +125,49 @@ Consider the more complex pdf
 \end{align}
 
 The goal is to estimate $\theta, \lambda$ and $\pi$ applying EM.
-As all observations are independent we formulate the complete likelihood as
+Because (3.1) is a mixture of two PDFs, one can rewrite the observed PDF introducing missing data
 
 \begin{equation}
-  \mathcal{L}(\theta, \lambda, \pi | \bm{x}, \bm{y}) = \prod_{i = 1}^n (\pi \frac{\theta^2}{\theta + 1} (1 + y_i) \exp(-\theta y_i))^{x_i} + ((1 - \pi) \lambda \exp(\lambda -y_i))^{1 - x_i},
+  \mathcal{L}_i(\theta, \lambda | x_i, y_i) = f_\theta(y_i)^{x_i} f_\lambda(y_i)^{1 - x_i},
 \end{equation}
 
-with missing data $\bm{x}$.
-As parameters are independent the relevant loglikelihoods parts are
-
-* $\ell(\theta | \bm{x}, \bm{y}) = 2 \log(\theta) \sum_{i = 1}^n x_i - \log(\theta + 1) \sum_{i = 1}^n x_i - \theta \sum_{i = 1}^n x_i y_i + c$
-
-* $\ell(\lambda | \bm{x}, \bm{y}) = \log(\lambda) \sum_{i = 1}^n (1 - x_i) - \lambda \sum_{i = 1}^n (1 - x_i) y_i + c$
-<!-- * $\ell(\pi | \bm{x}, \bm{y}) = \log(\pi) \sum_{i = 1}^n x_i + \log(1 - \pi) \sum_{i = 1}^n (1 - x_i) + c$ -->
-
-$\theta$ can be estimated as in section \@ref(maximum-likelihood-estimation-of-theta) replacing $\bar{y}$ with $(\sum_{i = 1}^n x_i y_i) / \sum_{i = 1}^n x_i$.
-The derivative of $\ell(\lambda | \bm{x}, \bm{y})$ is
+where $X_i \sim Ber(\pi)$.
+We continue by applying the Bayes theorem
 
 \begin{equation}
-  \ell'(\lambda | \bm{x}, \bm{y}) = \frac{1}{\lambda} (n - \sum_{i = 1}^n x_i) - \sum_{i = 1}^n y_i + \sum_{i = 1}^n x_i y_i.
+  f(x_i | \theta, \lambda, y_i) =
+  \dfrac{\mathcal{L}_i(\theta, \lambda | x_i, y_i) f(x_i)}{f(\theta, \lambda)}.
 \end{equation}
 
-This can be solved analytically
+Note that $f(\theta, \lambda) = f(x_i = 0) \mathcal{L}_i(\theta, \lambda | x_i = 0, y_i) + f(x_i = 1) \mathcal{L}_i(\theta, \lambda | x_i = 1, y_i)$.
+Via substituting we arrive at
 
 \begin{equation}
-  \hat{\lambda} = \frac{n - \sum_{i = 1}^n x_i}{\sum_{i = 1}^n y_i - \sum_{i = 1}^n x_i y_i}
+  f(x_i | \theta, \lambda, y_i) =
+  \dfrac{f_\theta(y_i)^{x_i} f_\lambda(y_i)^{1 - x_i} \pi^{x_i} (1 - \pi)^{1 - x_i}}{(1 - \pi) f_\lambda(y_i) + \pi f_\theta(y_i)}.
 \end{equation}
+
+From this we can read
+
+\begin{equation}
+  \mathbb{E}(X_i | \theta, \lambda, y_i) = \dfrac{f_\theta(y_i) \pi }{(1 - \pi) f_\lambda(y_i) + \pi f_\theta(y_i)}.
+\end{equation}
+
+Now we have everything we need: a approachable likelihood for the maximization step and the expectation of the missing data given the parameter estimates.
+All parameters are independent, so the relevant parts of the likelihoods are
+
+\begin{align}
+  \ell(\pi | \bm{x}) &= \log(\pi) \sum_{i = 1}^n x_i + \log(1 - \pi) \sum_{i = 1}^n (1 - x_i) \\
+  \ell(\lambda | \bm{x}, \bm{y}) &= \log(\lambda) \sum_{i = 1}^n (1 - x_i) - \lambda \sum_{i = 1}^n (1 - x_i) y_i + c \\
+  \ell(\theta | \bm{x}, \bm{y}) &= 2 \log(\theta) \sum_{i = 1}^n x_i - \log(\theta + 1) \sum_{i = 1}^n x_i - \theta \sum_{i = 1}^n x_i y_i + c \\
+  &\propto 2 \log(\theta) - \log(\theta + 1)  - \theta \tilde{y} + c
+\end{align}
+
+the augmented data contains all the information about $\pi$.
+So, noting the distribution of $X_i$, we can maximize (3.7) to obtain the ML estimate $\hat{\pi} = \frac{1}{n} \sum_{i = 1}^n x_i$. \
+It is also possible to solve (3.8) analytically.
+The likelihood is maximized by $\hat{\lambda} = (n - \sum_{i = 1}^n x_i) / (\sum_{i = 1}^n y_i - \sum_{i = 1}^n x_i y_i)$. <!-- TODO: Probably wrong and the inverse is right -->
+$\tilde{y} = \sum_{i = 1}^n x_i y_i / \sum_{i = 1}^n x_i$
+
+Terminating condition
 
