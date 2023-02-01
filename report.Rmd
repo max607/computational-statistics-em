@@ -111,7 +111,7 @@ The maximum of $\ell(\theta)$ has to be found numerically, here via Newton-Raphs
 where $\ell''(\theta) = -\frac{2}{\theta^2} + \frac{1}{(\theta + 1)^2}$, $\theta$ is the value at iteration $t$ and $\theta^*$ is the updated value at iteration $t + 1$, until the update gets very close to zero.
 The final value is taken as the ML estimate.
 
-For the given data $\hat{\theta} =$ `r theta_hat2`.
+For the given data $\hat{\theta} =$ `r theta_hat`.
 
 # Bootstrapping for standard error of $\hat{\theta}$
 
@@ -151,7 +151,7 @@ This is implemented in the following steps:
 Returned is a sample of size $n$, which can be seen as a realization of $Y_i$ with PDF $f_\theta(y_i)$.
 $n_2$ observations are realizations of Gamma RVs with shape two and $n - n2$ observation of are realizations of Gamma RVs with shape one.
 
-For the purpose of estimating $\theta$ with the estimator of section \@ref(newton-raphson) it is of no importance that the sample is sorted by shape.
+For the purpose of estimating $\theta$ with the estimator of Section \@ref(newton-raphson) it is of no importance that the sample is sorted by shape.
 
 ## Bootstrap standard error
 
@@ -163,7 +163,7 @@ Given $B$ samples of size $n$ from the sampler of the previous section, and corr
 
 according to the lecture slides, where $\hat{\theta}^*$ is the sample mean of all $\hat{\theta}_b^*$.
 
-For this simulation $B = 10^4$ and the resulting $\hat{\text{se}}_B(\hat{\theta}) =$ `r boot.se`.
+For this simulation $B = 10^4$ and the resulting $\hat{\text{se}}_B(\hat{\theta}) =$ `r theta_hat.se`.
 
 # EM
 
@@ -224,9 +224,35 @@ where $\tilde{y} = \sum_{i = 1}^n x_i y_i / \sum_{i = 1}^n x_i$.
 The maximizer of (3.5) is $\hat{\pi} = \frac{1}{n} \sum_{i = 1}^n x_i$. \
 It is also possible to maximize (3.6) analytically, via $\hat{\lambda} = (n - \sum_{i = 1}^n x_i) / (\sum_{i = 1}^n y_i - \sum_{i = 1}^n x_i y_i)$.
 This can be interpreted as the inverse of the sample mean of the $y_i$, where $x_i = 0$. \
-(3.7) has no close form and is maximized using Newton-Raphson (see section \@ref(newton-raphson)), substituting $\bar{y}$ with $\tilde{y}$, which can be interpreted as the sample mean of the $y_i$, where $x_i = 1$.
+(3.7) has no close form and is maximized using Newton-Raphson (see Section \@ref(newton-raphson)), substituting $\bar{y}$ with $\tilde{y}$, which can be interpreted as the sample mean of the $y_i$, where $x_i = 1$.
 
 ## Application
 
-Terminating condition
+* Starting from initial guesses, $\pi = 0.5, \theta = 1, \lambda = 1$, a first version of $x_i$s is generated using the result from Section \@ref(expectation).
+* Next, the parameters are updated using the results from Section \@ref(maximization).
+* Now iterate between the expectation and the maximization step while monitoring the observed likelihood of current parameter estimates.
+* Stop when there no longer is a relative increase in the observed likelihood and return $\hat{\pi}, \hat{\theta}, \hat{\lambda}$, the maximum likelihood estimates.
+
+For the given data $\hat{\pi} =$ `r em.run$p_hat`, $\hat{\theta} =$ `r em.run$theta_hat` and $\hat{\lambda} =$ `r em.run$lambda_hat`.
+
+The augmented data can be seen as the probability of the observations pertaining to the cluster, where the PDF is $f_\theta(y_i)$.
+As can be seen in Figure \@ref(fig:plot-xy), the probability of datum $i$ to be from cluster $c_\theta$ increases linearly with $y$.
+
+```{r plot-xy, fig.cap='(ref:plot-xy)'}
+p2
+```
+(ref:plot-xy) Scatterplot of $x_i$ and $y_i$.
+
+Figure \@ref(fig:plot-convergence) and \@ref(fig:plot-convergence-x) show the paths taken by the parameters and artificial data during optimization.
+All seem to have converged.
+
+```{r plot-convergence, fig.cap='(ref:plot-convergence)'}
+p3
+```
+(ref:plot-convergence) Convergence of $\pi, \theta, \lambda$ and observed loglikelihood.
+
+```{r plot-convergence-x, fig.cap='(ref:plot-convergence-x)'}
+p4
+```
+(ref:plot-convergence-x) Convergence of artificial data $x_i$.
 
